@@ -5,19 +5,19 @@ from observatory import Observatory, Sensor, Telescope
 import psfs
 
 # Create a class GroundObservatory that inherits from Observatory
+# Altitude is in m
 
 class GroundObservatory(Observatory):
     def __init__(self, sensor, telescope, filter_bandpass=S.UniformTransmission(1.0),
-                 exposure_time=1., num_exposures=1, eclip_lat=90,
-                 limiting_s_n=5., jitter_psd=None,
-                 altitude=0, airmass=1.0):
+                 exposure_time=1., num_exposures=1, seeing=1.0,
+                 limiting_s_n=5., altitude=0, airmass=1.0):
+        telescope.psf_type = 'gaussian'
+        telescope.fwhm = seeing
         super().__init__(sensor=sensor, telescope=telescope,
                          filter_bandpass=filter_bandpass,
                          exposure_time=exposure_time,
                          num_exposures=num_exposures,
-                         eclip_lat=eclip_lat,
-                         limiting_s_n=limiting_s_n,
-                         jitter_psd=jitter_psd)
+                         limiting_s_n=limiting_s_n)
         self.altitude = altitude
         self.airmass = airmass
         self.scint_noise = self.get_scint_noise()
@@ -26,7 +26,7 @@ class GroundObservatory(Observatory):
         diam_factor = (self.telescope.diam ** - (2/3))
         exp_time_factor = (2 * self.exposure_time) ** (-1/2)
         airmass_factor = self.airmass ** (3/2)
-        altitude_factor = np.exp(-self.altitude / 8)
+        altitude_factor = np.exp(-self.altitude / 8000)
         return 0.09 * diam_factor * exp_time_factor * airmass_factor * altitude_factor
     
     def observe(self, spectrum, pos=np.array([0, 0]), img_size=11, resolution=11, num_aper_frames=1):

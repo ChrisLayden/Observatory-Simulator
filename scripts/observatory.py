@@ -107,7 +107,7 @@ class Telescope(object):
     plate_scale: float
         The focal plate scale, in um/arcsec
     '''
-    def __init__(self, diam, f_num, psf_type='airy', spot_size=1.0,
+    def __init__(self, diam, f_num, psf_type='airy', fwhm=None,
                  bandpass=S.UniformTransmission(1.0)):
         '''Initializing a telescope object.
 
@@ -119,9 +119,8 @@ class Telescope(object):
             Ratio of the focal length to diam
         psf_type: string
             The name of the PSF to use. Options are 'airy' and 'gaussian'.
-        spot_size: float
-            The spot size (i.e., standard distribution of the psf), relative
-            to the diffraction limit. Only used for Gaussian PSFs.
+        fwhm: float
+            The FWHM of the psf, in arcsec. Only used if psf_type is 'gaussian'.
         bandpass: pysynphot.bandpass object
             The telescope bandpass as a function of wavelength,
             accounting for throughput and any geometric blocking
@@ -134,7 +133,9 @@ class Telescope(object):
         self.bandpass = bandpass
         self.focal_length = self.diam * self.f_num
         self.psf_type = psf_type
-        self.spot_size = spot_size
+        self.fwhm = fwhm
+        if self.psf_type == 'gaussian' and self.fwhm is None:
+            raise ValueError('Gaussian PSF requires a spot size.')
         self.plate_scale = 206265 / (self.focal_length * 10**4)
 
     @property
@@ -264,19 +265,20 @@ class Observatory(object):
         eff_area = tele_area * pivot_throughput
         return eff_area
 
-    def psf_fwhm(self):
+    def psf_fwhm_um(self):
         '''The full width at half maximum of the PSF, in microns.'''
         diff_lim_fwhm = 1.025 * self.lambda_pivot * self.telescope.f_num / 10 ** 4
         if self.telescope.psf_type == 'airy':
             fwhm = diff_lim_fwhm
         elif self.telescope.psf_type == 'gaussian':
-            fwhm = diff_lim_fwhm * self.telescope.spot_size
+            # Need to go from cm to um
+            fwhm = self.telescope.fwhm / 206265 * self.telescope.focal_length * 10 ** 4
         return fwhm
 
     def central_pix_frac(self):
         '''The fraction of the total signal in the central pixel.'''
         if self.telescope.psf_type == 'gaussian':
-            psf_sigma = self.psf_fwhm() / 2.355
+            psf_sigma = self.psf_fwhm_um() / 2.355
             half_width = self.sensor.pix_size / 2
             pix_frac = psfs.gaussian_ensq_energy(half_width, psf_sigma,
                                                  psf_sigma)
@@ -420,7 +422,7 @@ class Observatory(object):
         '''
         tot_signal = self.tot_signal(spectrum)
         if self.telescope.psf_type == 'gaussian':
-            psf_sigma = self.psf_fwhm() / 2.355
+            psf_sigma = self.psf_fwhm_um() / 2.355
             cov_mat = [[psf_sigma ** 2, 0], [0, psf_sigma ** 2]]
             psf_grid = psfs.gaussian_psf(img_size, resolution,
                                          self.sensor.pix_size, pos, cov_mat)

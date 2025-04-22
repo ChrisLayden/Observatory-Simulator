@@ -295,26 +295,29 @@ def get_aper_padding(aper):
 if __name__ == '__main__':
     # Test the functions
     import matplotlib.pyplot as plt
-
-    # # Test the Gaussian
-    # gaussian = gaussian_psf(5, 5, 1, [0,0], [[1,0],[0,1]])
-    # fig, ax = plt.subplots()
-    # im = ax.imshow(gaussian)
-    # plt.colorbar(im)
-    # plt.show()
-
-    # Test the Airy
-    airy_psf = airy_disk(10, 10, 1, [0,0], 5, 5000)
-    # Test the jittering
-    jittered_psf = get_jittered_psf(airy_psf, 0.5, 10)
-
-    # Plot them next to each other
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    im1 = ax1.imshow(np.log(airy_psf))
-    plt.colorbar(im1, ax=ax1)
-    im2 = ax2.imshow(np.log(jittered_psf))
-    plt.colorbar(im2, ax=ax2)
+    test_gaussian = gaussian_psf(11, 1, 1, [0, 0], [[0.34, 0], [0, 0.34]])
+    plt.imshow(test_gaussian)
     plt.show()
+
+    # # # Test the Gaussian
+    # # gaussian = gaussian_psf(5, 5, 1, [0,0], [[1,0],[0,1]])
+    # # fig, ax = plt.subplots()
+    # # im = ax.imshow(gaussian)
+    # # plt.colorbar(im)
+    # # plt.show()
+
+    # # Test the Airy
+    # airy_psf = airy_disk(10, 10, 1, [0,0], 5, 5000)
+    # # Test the jittering
+    # jittered_psf = get_jittered_psf(airy_psf, 0.5, 10)
+
+    # # Plot them next to each other
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # im1 = ax1.imshow(np.log(airy_psf))
+    # plt.colorbar(im1, ax=ax1)
+    # im2 = ax2.imshow(np.log(jittered_psf))
+    # plt.colorbar(im2, ax=ax2)
+    # plt.show()
 
     # # Test the Moffat
     # moffat = moffat_psf(10, 10, 1, [0,0], 5, 12.5)

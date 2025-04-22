@@ -73,7 +73,7 @@ class MyGUI:
                               pady=pady)
         self.tele_labels = []
         tele_label_names = ['Diameter (cm)', 'F/number', 'PSF Type',
-                            'Spot Size FWHM\n(times diffraction-limit)',
+                            'Spot Size FWHM\n(arcsec)',
                             'Bandpass']
         self.tele_boxes = []
         self.tele_vars = []
@@ -95,7 +95,6 @@ class MyGUI:
         self.tele_vars[0].set(10)
         self.tele_vars[1].set(10)
         self.tele_vars[2].set('airy')
-        self.tele_vars[2].trace_add('write', self.gray_if_airy)
         self.tele_vars[3].set(1)
         self.tele_boxes[3].config(state='disabled')
         self.tele_vars[4].set(1)
@@ -282,22 +281,19 @@ class MyGUI:
             self.sens_vars[3] = tk.StringVar()
             self.sens_vars[3].set('ARRAY')
             self.sens_boxes[3].config(textvariable=self.sens_vars[3])
-            self.sens_boxes[3].config(state='disabled')
-
-    def gray_if_airy(self, *args):
-        '''If the PSF type is set to airy, set the spot size FWHM to 1 and don't let it change.'''
-        if self.tele_vars[2].get() == 'airy':
-            self.tele_vars[3].set(1)
-            self.tele_boxes[3].config(state='disabled')
-        else:
-            self.tele_boxes[3].config(state='normal')    
+            self.sens_boxes[3].config(state='disabled') 
 
     def set_tele(self, *args):
         self.tele = telescope_dict[self.tele_default.get()]
         self.tele_vars[0].set(self.tele.diam)
         self.tele_vars[1].set(self.tele.f_num)
         self.tele_vars[2].set(self.tele.psf_type)
-        self.tele_vars[3].set(self.tele.spot_size)
+        if self.tele.fwhm is None:
+            self.tele_vars[3].set(float('nan'))
+            self.tele_boxes[3].config(state='disabled')
+        else:
+            self.tele_vars[3].set(self.tele.fwhm)
+            self.tele_boxes[3].config(state='normal')
         self.tele_vars[4].set(self.tele.bandpass)
 
     def set_psd(self, *args):
@@ -381,7 +377,7 @@ class MyGUI:
 
             self.results_data[0].config(text=format(observatory.pix_scale, '4.3f'))
             self.results_data[1].config(text=format(observatory.lambda_pivot / 10, '4.1f'))
-            self.results_data[2].config(text=format(observatory.psf_fwhm(), '4.3f'))
+            self.results_data[2].config(text=format(observatory.psf_fwhm_um(), '4.3f'))
             self.results_data[3].config(text=format(100 * observatory.central_pix_frac(),
                                                     '4.1f') + '%')
             self.results_data[4].config(text=format(jitter_sigma, '4.3f'))

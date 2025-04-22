@@ -41,7 +41,7 @@ def shift_values(arr, del_x, del_y):
     new_arr : array-like
         The shifted array.
     '''
-    n, m = arr.shape
+    m, n = arr.shape
     new_arr = np.zeros_like(arr)
     # print(abs(del_x) > m, abs(del_y) > n)
     new_arr[max(del_y, 0):m+min(del_y, 0), max(del_x, 0):n+min(del_x, 0)] = \
