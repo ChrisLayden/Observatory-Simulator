@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from spectra import *
 from observatory import Sensor, Telescope, Observatory
+from space_observatory import SpaceObservatory
 from instruments import sensor_dict, telescope_dict, filter_dict
 from tkinter import messagebox
 from jitter_tools import integrated_stability, psd_dict
@@ -335,7 +336,7 @@ class MyGUI:
             one_sigma = integrated_stability(100, freqs, amplitudes)
             norm_factor = (rms_jitter / one_sigma) ** 2
             self.psd = np.array([freqs, norm_factor * amplitudes]).T
-        observatory = Observatory(sens, tele, exposure_time=exposure_time,
+        observatory = SpaceObservatory(sens, tele, exposure_time=exposure_time,
                                   num_exposures=num_exposures,
                                   limiting_s_n=limiting_snr,
                                   filter_bandpass=filter_bp,

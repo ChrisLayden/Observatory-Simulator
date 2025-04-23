@@ -15,8 +15,8 @@ import warnings
 import psfs
 import numpy as np
 import pysynphot as S
-from sky_background import bkg_spectrum
-from jitter_tools import jittered_array, integrated_stability, get_pointings, shift_values
+from sky_background import bkg_spectrum_space
+from jitter_tools import shift_values
 
 
 class Sensor(object):
@@ -70,6 +70,7 @@ class Sensor(object):
 
     @property
     def qe(self):
+        '''The quantum efficiency of the sensor.'''
         return self._qe
 
     @qe.setter
@@ -135,6 +136,7 @@ class Telescope(object):
 
     @property
     def bandpass(self):
+        '''The bandpass of the telescope.'''
         return self._bandpass
 
     @bandpass.setter
@@ -155,7 +157,7 @@ class Observatory(object):
     def __init__(
             self, sensor, telescope, filter_bandpass=S.UniformTransmission(1.0),
             exposure_time=1., num_exposures=1, eclip_lat=90,
-            limiting_s_n=5., jitter_psd=None):
+            limiting_s_n=5.):
 
         '''Initialize Observatory class attributes.
 
@@ -175,12 +177,6 @@ class Observatory(object):
             The ecliptic latitude of the target, in degrees.
         limiting_s_n: float
             The signal-to-noise ratio constituting a detection.
-        jitter_psd: array-like (n x 2)
-            The power spectral density of the jitter. Assumes PSD is
-            the same for x and y directions, and no roll jitter.
-            Contains two columns: the first is the frequency, in Hz, and
-            the second is the PSD, in arcseconds^2/Hz. If not specified,
-            it's assumed that there is no pointing jitter.
         '''
 
         self.sensor = sensor
@@ -205,19 +201,6 @@ class Observatory(object):
         self.limiting_s_n = limiting_s_n
         plate_scale = 206265 / (self.telescope.focal_length * 10**4)
         self.pix_scale = plate_scale * self.sensor.pix_size
-        # The mean charge that must be subtracted from each pixel to get the signal
-        self.mean_pix_bkg = (self.bkg_per_pix() + self.sensor.dark_current *
-                             self.exposure_time)
-        self.jitter_psd = jitter_psd
-        # The total power in the jitter PSD, measured as a 1-sigma jitter,
-        # in arcseconds. The effective stability of images can be reduced
-        # by sampling at higher frequencies.
-        if self.jitter_psd is not None:
-            self.stability = integrated_stability(10,
-                                                  jitter_psd[:, 0],
-                                                  jitter_psd[:, 1])
-        else:
-            self.stability = 0
 
     def binset(self, spectrum):
         '''Narrowest binset from telescope, sensor, filter, and spectrum.'''
@@ -245,7 +228,7 @@ class Observatory(object):
 
     def bkg_per_pix(self):
         '''The background noise per pixel, in e-/pix.'''
-        bkg_wave, bkg_ilam = bkg_spectrum(self.eclip_lat)
+        bkg_wave, bkg_ilam = bkg_spectrum_space(self.eclip_lat)
         bkg_flam = bkg_ilam * self.pix_scale ** 2
         bkg_sp = S.ArraySpectrum(bkg_wave, bkg_flam, fluxunits='flam')
         bkg_signal = self.tot_signal(bkg_sp)
@@ -459,8 +442,8 @@ class Observatory(object):
     def get_relative_signal_grid(self, intrapix_sigma, pos=np.array([0, 0]),
                                  img_size=11, resolution=21):
         '''Get relative signal with PSF centered at each subpixel.'''
-        # Only effective if jitter is small relative to pixel scale.
-        # Otherwise there's too much smearing.
+        # Looking at this grid can show you whether subpixel
+        # variations in sensitivity are important.
         spec = S.FlatSpectrum(15, fluxunits='abmag')
         spec.convert('fnu')
         intrapix_grid = self.get_intrapix_grid(img_size, resolution, intrapix_sigma)
@@ -477,7 +460,7 @@ class Observatory(object):
 
     def get_opt_aper(self, spectrum, pos=np.array([0, 0]), img_size=11,
                      resolution=11):
-        '''Find the optimal aperture for a given jittered point source.
+        '''Find the optimal aperture for a given point source.
         
         Parameters
         ----------
@@ -491,12 +474,8 @@ class Observatory(object):
             The extent of the subarray, in pixels.
         resolution: int (default 11)
             The number of sub-pixels per pixel.
-        num_aper_frames: int (default 200)
-            The number of frames stacked to find the optimal aperture.
-            It is important to stack a large number of frames to
-            fully smear out the jitter in all directions.
         '''
-        
+
         aper_found = False
         while not aper_found:
             if img_size >= 50:
@@ -526,7 +505,7 @@ class Observatory(object):
             microns, with [0,0] representing the center of the
             central pixel.
         num_frames : int (default 100)
-            The number of frames to simulate with jitter.
+            The number of frames to simulate.
         img_size: int (default 11)
             The extent of the subarray, in pixels. Should be odd, so that
             [0,0] indeed represents the center of the central pixel.
@@ -539,7 +518,7 @@ class Observatory(object):
         Returns
         -------
         results_dict: dict
-            A dictionary containing the signal, total noise, jitter noise,
+            A dictionary containing the signal, total noise,
             dark noise, background noise, read noise, shot noise, number
             of aperture pixels, and signal-to-noise ratio.
         '''
@@ -572,7 +551,7 @@ class Observatory(object):
 
     def get_images(self, spectrum, pos=np.array([0, 0]), num_images=1,
                    img_size=11, resolution=11, bias=100):
-        '''Get realistic images of a point source with jitter.
+        '''Get realistic images of a point source.
 
         Parameters
         ----------
@@ -600,7 +579,7 @@ class Observatory(object):
         images: array-like
             An array containing the simulated images. These images
             are not background or bias-subtracted, nor are they
-            corrected for subpixel jitter.
+            corrected for subpixel effects.
         opt_aper: array-like
             The optimal aperture for the images.
         '''
@@ -610,15 +589,7 @@ class Observatory(object):
         if resolution % 2 == 0:
             resolution += 1
         opt_aper = self.get_opt_aper(spectrum, pos, img_size, resolution)
-        aper_pads = psfs.get_aper_padding(opt_aper)
         num_frames = num_images * self.num_exposures
-        pointings_array = self.get_pointings(num_frames, resolution)
-        # Make subarray larger if jitter causes any aperture subpixels
-        # to fall off the subarray.
-        max_shift = np.max(abs(pointings_array))
-        max_falloff = np.ceil(max_shift / resolution - np.min(aper_pads)).astype(int)
-        if max_falloff >= 0:
-            opt_aper = np.pad(opt_aper, max_falloff, 'constant')
         # Adjust img_size if it had to be increased to contain the optimal aperture
         img_size = opt_aper.shape[0]
         initial_grid = self.signal_grid_fine(spectrum, pos, img_size, resolution)
@@ -627,20 +598,14 @@ class Observatory(object):
         read_signal = np.rint(read_signal).astype(int)
         intrapix_sigma = self.sensor.intrapix_sigma
         intrapix_grid = self.get_intrapix_grid(img_size, resolution, intrapix_sigma)
+        initial_grid *= intrapix_grid
+        avg_frame = initial_grid.reshape((img_size, resolution, img_size,
+                                          resolution)).sum(axis=(1, 3))
         images = np.zeros((num_images, img_size, img_size))
         for i in range(num_frames):
-            pointings = pointings_array[i]
-            avg_grid = jittered_array(initial_grid, pointings)
-            avg_grid *= intrapix_grid
-            frame = avg_grid.reshape((img_size, resolution, img_size,
-                                      resolution)).sum(axis=(1, 3))
-            # Find the average shift caused by the jitter in the frame and shift the frame
-            # back by that amount. On board, this would require a centroiding algorithm
-            # or a feed-in from the star tracker.
-            shift_x = np.rint(np.mean(pointings[:,0]) / resolution).astype(int)
-            shift_y = np.rint(np.mean(pointings[:,1]) / resolution).astype(int)
-            frame = shift_values(frame, -shift_x, -shift_y)
-            frame = np.random.poisson(frame + self.mean_pix_bkg)
+            mean_pix_bkg = (self.bkg_per_pix() + self.sensor.dark_current *
+                             self.exposure_time)
+            frame = np.random.poisson(avg_frame + mean_pix_bkg)
             frame = frame + read_signal[:, :, i] + bias
             images[i // self.num_exposures] += frame
 
@@ -665,4 +630,6 @@ if __name__ == '__main__':
                                filter_bandpass=r_bandpass, eclip_lat=90,
                                exposure_time=1, num_exposures=6)
     results = tess_geo_obs.observe(flat_spec, img_size=11, resolution=21)
+    test_image, aper = tess_geo_obs.get_images(flat_spec, img_size=11,
+                                                   resolution=21, num_images=1)
     print(results)

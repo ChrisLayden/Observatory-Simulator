@@ -14,6 +14,7 @@ import os
 import numpy as np
 import pysynphot as S
 from observatory import Observatory, Sensor, Telescope
+from sky_background import bkg_spectrum_ground
 import psfs
 
 class GroundObservatory(Observatory):
@@ -21,7 +22,7 @@ class GroundObservatory(Observatory):
 
     def __init__(self, sensor, telescope, filter_bandpass=S.UniformTransmission(1.0),
                  exposure_time=1., num_exposures=1, seeing=1.0,
-                 limiting_s_n=5., altitude=0, airmass=1.0):
+                 limiting_s_n=5., altitude=0, alpha=180, zo=0, rho=45):
         '''Initialize the GroundObservatory class.
         
         Parameters
@@ -43,20 +44,47 @@ class GroundObservatory(Observatory):
             The limiting signal-to-noise ratio for observations.
         altitude: float
             The altitude of the observatory, in meters.
-        airmass: float
-            The airmass of the object being observed.
+        alpha: float
+            The lunar phase angle, in degrees. 0 is full moon, 180 is new moon.
+            Should only be between 0 and 180 (assumes symmetry between
+            waning/waxing).
+        zo: float
+            The zenith angle of the object being observed, in degrees.
+        rho: float
+            The angular separation between the moon and the object, in degrees.
+            For simplicity, we assume the moon is lower in the sky than the
+            object, with zenith angle zo - rho.
         '''
 
-        telescope.psf_type = 'gaussian'
-        telescope.fwhm = seeing
         super().__init__(sensor=sensor, telescope=telescope,
                          filter_bandpass=filter_bandpass,
                          exposure_time=exposure_time,
                          num_exposures=num_exposures,
                          limiting_s_n=limiting_s_n)
+
+        telescope.psf_type = 'gaussian'
+        telescope.fwhm = seeing
+        self.alpha = alpha
         self.altitude = altitude
-        self.airmass = airmass
+        self.zo = zo
+        # Formula 3 in Krisciunas & Schaefer 1991 for airmass.
+        self.airmass = (1 - 0.96 * np.sin(np.radians(zo)) ** 2) ** -0.5
+        self.rho = rho
+        # The zenith angle of the moon, in degrees.
+        self.zm = zo - rho
         self.scint_noise = self.get_scint_noise()
+        
+    @property
+    def alpha(self):
+        '''The lunar phase angle during observation.'''
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        if value < 0 or value > 180:
+            raise ValueError("alpha must be between 0 and 180 degrees.")
+        else:
+            self._alpha = value
 
     def get_scint_noise(self):
         '''Calculate the scintillation noise, per formula from Young, 1967.'''
@@ -65,6 +93,15 @@ class GroundObservatory(Observatory):
         airmass_factor = self.airmass ** (3/2)
         altitude_factor = np.exp(-self.altitude / 8000)
         return 0.09 * diam_factor * exp_time_factor * airmass_factor * altitude_factor
+    
+    def bkg_per_pix(self):
+        '''The background noise per pixel, in e-/pix.'''
+        bkg_wave, bkg_ilam = bkg_spectrum_ground(alpha=self.alpha, rho=self.rho,
+                                                 Zm=self.zm, Zo=self.zo,)
+        bkg_flam = bkg_ilam * self.pix_scale ** 2
+        bkg_sp = S.ArraySpectrum(bkg_wave, bkg_flam, fluxunits='flam')
+        bkg_signal = self.tot_signal(bkg_sp)
+        return bkg_signal
 
     def observe(self, spectrum, pos=np.array([0, 0]), img_size=11,
                 resolution=11, num_aper_frames=1):
@@ -148,6 +185,7 @@ if __name__ == '__main__':
     magellan_telescope = Telescope(diam=650, f_num=2)
     magellan = GroundObservatory(sensor=imx455, telescope=magellan_telescope,
                                  altitude=2, airmass=1, exposure_time=0.1,
-                                 seeing=0.5)
+                                 seeing=0.5, alpha=180)
     my_spectrum = S.FlatSpectrum(20, fluxunits='abmag')
     print(magellan.observe(my_spectrum))
+    
