@@ -307,43 +307,63 @@ class Observatory(object):
         exposure_snr = signal / noise
         stack_snr = exposure_snr * np.sqrt(self.num_exposures)
         return stack_snr
-
-    def limiting_mag(self):
-        '''The limiting AB magnitude for the observatory.'''
-        # We use an aperture of just 1 pixel, as this is the optimal
-        # aperture for very dark objects, especially for an undersampled
-        # system.
-        mag_10_spectrum = S.FlatSpectrum(10, fluxunits='abmag')
-        mag_10_spectrum.convert('fnu')
-        mag_10_signal = self.single_pix_signal(mag_10_spectrum)
-        pix_noise = self.single_pix_noise()
-
-        def s_n_diff_mag(mag):
-            '''The difference between the S/N at mag and the limiting S/N.'''
-            signal = mag_10_signal * 10 ** ((10 - mag) / 2.5)
-            noise = np.sqrt(signal + pix_noise ** 2)
-            snr = signal / noise * np.sqrt(self.num_exposures)
-            return snr - self.limiting_s_n
-
-        # Newton-Raphson method for root-finding
-        mag_tol, s_n_tol = 0.01, 0.01
-        i = 1
-        mag = 15
-        mag_deriv_step = 0.01
-        eps_mag = 1
-        eps_s_n = s_n_diff_mag(mag)
-        while abs(eps_s_n) > s_n_tol:
-            if abs(eps_mag) < mag_tol:
-                raise RuntimeError('No convergence to within 0.01 mag.')
-            elif i > 20:
-                raise RuntimeError('No convergence after 20 iterations.')
-            eps_s_n_prime = ((s_n_diff_mag(mag + mag_deriv_step) - eps_s_n) /
-                             mag_deriv_step)
-            eps_mag = eps_s_n / eps_s_n_prime
-            mag -= eps_mag
-            eps_s_n = s_n_diff_mag(mag)
+    
+    def limiting_mag(self, eps=0.05):
+        '''Get the limiting AB magnitude for the observatory parameters.'''
+        mag = 10
+        spectrum = S.FlatSpectrum(mag, fluxunits='abmag')
+        spectrum.convert('fnu')
+        results_dict = self.observe(spectrum)
+        snr_ratio = results_dict['snr'] / self.limiting_s_n
+        i = 0
+        while abs(snr_ratio - 1) > eps and i < 10:
+            mag = mag + 2.5 * np.log10(snr_ratio)
+            spectrum = S.FlatSpectrum(mag, fluxunits='abmag')
+            spectrum.convert('fnu')
+            results_dict = self.observe(spectrum)
+            snr_ratio = results_dict['snr'] / self.limiting_s_n
             i += 1
+        if i == 10:
+            raise ValueError("Limiting magnitude not found within 10 iterations.")
         return mag
+
+
+    # def limiting_mag(self):
+    #     '''The limiting AB magnitude for the observatory.'''
+    #     # We use an aperture of just 1 pixel, as this is the optimal
+    #     # aperture for very dark objects, especially for an undersampled
+    #     # system.
+    #     mag_10_spectrum = S.FlatSpectrum(10, fluxunits='abmag')
+    #     mag_10_spectrum.convert('fnu')
+    #     mag_10_signal = self.single_pix_signal(mag_10_spectrum)
+    #     pix_noise = self.single_pix_noise()
+
+    #     def s_n_diff_mag(mag):
+    #         '''The difference between the S/N at mag and the limiting S/N.'''
+    #         signal = mag_10_signal * 10 ** ((10 - mag) / 2.5)
+    #         noise = np.sqrt(signal + pix_noise ** 2)
+    #         snr = signal / noise * np.sqrt(self.num_exposures)
+    #         return snr - self.limiting_s_n
+
+    #     # Newton-Raphson method for root-finding
+    #     mag_tol, s_n_tol = 0.01, 0.01
+    #     i = 1
+    #     mag = 15
+    #     mag_deriv_step = 0.01
+    #     eps_mag = 1
+    #     eps_s_n = s_n_diff_mag(mag)
+    #     while abs(eps_s_n) > s_n_tol:
+    #         if abs(eps_mag) < mag_tol:
+    #             raise RuntimeError('No convergence to within 0.01 mag.')
+    #         elif i > 20:
+    #             raise RuntimeError('No convergence after 20 iterations.')
+    #         eps_s_n_prime = ((s_n_diff_mag(mag + mag_deriv_step) - eps_s_n) /
+    #                          mag_deriv_step)
+    #         eps_mag = eps_s_n / eps_s_n_prime
+    #         mag -= eps_mag
+    #         eps_s_n = s_n_diff_mag(mag)
+    #         i += 1
+    #     return mag
 
     def saturating_mag(self):
         '''The saturating AB magnitude for the observatory.'''

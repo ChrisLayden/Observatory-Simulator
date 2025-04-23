@@ -102,6 +102,24 @@ class GroundObservatory(Observatory):
         bkg_sp = S.ArraySpectrum(bkg_wave, bkg_flam, fluxunits='flam')
         bkg_signal = self.tot_signal(bkg_sp)
         return bkg_signal
+    
+    def turnover_exp_time(self, spectrum, eps=0.02):
+        '''Get the exposure time at which background noise is equal to read noise.'''
+        exp_time_initial = self.exposure_time
+        new_exp_time = exp_time_initial
+        results_dict = self.observe(spectrum)
+        read_over_bkg = results_dict['read_noise'] / results_dict['bkg_noise']
+        i = 0
+        while abs(read_over_bkg - 1) > eps and i < 10:
+            new_exp_time = self.exposure_time * read_over_bkg
+            self.exposure_time = new_exp_time
+            results_dict = self.observe(spectrum)
+            read_over_bkg = results_dict['read_noise'] / results_dict['bkg_noise']
+            i += 1
+        if i == 10:
+            raise ValueError("Turnover exposure time not found within 10 iterations.")
+        self.exposure_time = exp_time_initial
+        return new_exp_time
 
     def observe(self, spectrum, pos=np.array([0, 0]), img_size=11,
                 resolution=11, num_aper_frames=1):
@@ -184,8 +202,9 @@ if __name__ == '__main__':
                     intrapix_sigma=6)
     magellan_telescope = Telescope(diam=650, f_num=2)
     magellan = GroundObservatory(sensor=imx455, telescope=magellan_telescope,
-                                 altitude=2, airmass=1, exposure_time=0.1,
-                                 seeing=0.5, alpha=180)
+                                 altitude=2, exposure_time=0.1,
+                                 seeing=0.5, alpha=180, zo=0, rho=45)
     my_spectrum = S.FlatSpectrum(20, fluxunits='abmag')
     print(magellan.observe(my_spectrum))
+    print(magellan.turnover_exp_time(my_spectrum))
     

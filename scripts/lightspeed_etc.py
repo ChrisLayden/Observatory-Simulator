@@ -158,100 +158,100 @@ class MyGUI:
         # Initializing labels that display results
         self.results_header = tk.Label(self.root, text='General Results',
                                        font=['Arial', 16, 'bold'])
-        self.results_header.grid(row=0, column=5, columnspan=1, padx=PADX,
+        self.results_header.grid(row=0, column=4, columnspan=1, padx=PADX,
                                  pady=PADY)
 
         self.run_button_1 = tk.Button(self.root, fg='green',
                                     text='RUN',
                                     command=self.run_calcs)
-        self.run_button_1.grid(row=0, column=6, columnspan=1, padx=PADX,
+        self.run_button_1.grid(row=0, column=5, columnspan=1, padx=PADX,
                              pady=PADY)
 
         self.results_labels = []
         results_label_names = ['Pixel Scale (arcsec/pix)',
                                'Pivot Wavelength (nm)',
                                'PSF FWHM (arcsec)',
-                               'Maximum Central Pixel Ensquared Energy',
-                               'Effective Area at Pivot Wavelength (cm^2)', 'Limiting AB magnitude',
+                               'Central Pixel Ensquared Energy',
+                               'A_eff at Pivot Wavelength (cm^2)', 'Limiting AB magnitude',
                                'Saturating AB magnitude', 'Airmass']
         self.results_data = []
         for i, name in enumerate(results_label_names):
             self.results_labels.append(tk.Label(self.root, text=name))
-            self.results_labels[i].grid(row=i+1, column=5, padx=PADX, pady=PADY)
+            self.results_labels[i].grid(row=i+1, column=4, padx=PADX, pady=PADY)
             self.results_data.append(tk.Label(self.root, fg='red'))
-            self.results_data[i].grid(row=i+1, column=6, padx=PADX, pady=PADY)
+            self.results_data[i].grid(row=i+1, column=5, padx=PADX, pady=PADY)
 
         # Set a spectrum to observe
         self.spectrum_header = tk.Label(self.root, text='Spectrum Observation',
                                         font=['Arial', 16, 'bold'])
-        self.spectrum_header.grid(row=0, column=7, columnspan=1, padx=PADX,
+        self.spectrum_header.grid(row=0, column=6, columnspan=1, padx=PADX,
                                   pady=PADY)
 
         self.run_button_2 = tk.Button(self.root, fg='green', text='RUN',
                                     command=self.run_observation)
-        self.run_button_2.grid(row=0, column=8, columnspan=1, padx=PADX,
+        self.run_button_2.grid(row=0, column=7, columnspan=1, padx=PADX,
                              pady=PADY)
 
         self.flat_spec_bool = tk.BooleanVar(value=True)
         self.flat_spec_check = tk.Checkbutton(self.root,
                                               text='Flat spectrum at AB mag',
                                               variable=self.flat_spec_bool)
-        self.flat_spec_check.grid(row=1, column=7, padx=PADX, pady=PADY)
+        self.flat_spec_check.grid(row=1, column=6, padx=PADX, pady=PADY)
         self.flat_spec_mag = tk.DoubleVar(value=20.0)
         self.flat_spec_entry = tk.Entry(self.root, width=10,
                                         textvariable=self.flat_spec_mag)
-        self.flat_spec_entry.grid(row=1, column=8, padx=PADX, pady=PADY)
+        self.flat_spec_entry.grid(row=1, column=7, padx=PADX, pady=PADY)
 
         self.bb_spec_bool = tk.BooleanVar()
         self.bb_spec_check = tk.Checkbutton(self.root,
                                             text='Blackbody with Temp (in K)',
                                             variable=self.bb_spec_bool)
-        self.bb_spec_check.grid(row=2, column=7, padx=PADX, pady=PADY)
+        self.bb_spec_check.grid(row=2, column=6, padx=PADX, pady=PADY)
         self.bb_temp = tk.DoubleVar()
         self.bb_spec_entry_1 = tk.Entry(self.root, width=10,
                                         textvariable=self.bb_temp)
-        self.bb_spec_entry_1.grid(row=2, column=8, padx=PADX, pady=PADY)
+        self.bb_spec_entry_1.grid(row=2, column=7, padx=PADX, pady=PADY)
         self.bb_dist_label = tk.Label(self.root, text='distance (in Mpc)')
-        self.bb_dist_label.grid(row=3, column=7, padx=PADX, pady=PADY)
+        self.bb_dist_label.grid(row=3, column=6, padx=PADX, pady=PADY)
         self.bb_distance = tk.DoubleVar()
         self.bb_spec_entry_2 = tk.Entry(self.root, width=10,
                                         textvariable=self.bb_distance)
-        self.bb_spec_entry_2.grid(row=3, column=8, padx=PADX, pady=PADY)
+        self.bb_spec_entry_2.grid(row=3, column=7, padx=PADX, pady=PADY)
         self.bb_lbol_label = tk.Label(self.root,
                                       text='bolometric luminosity (in erg/s)')
-        self.bb_lbol_label.grid(row=4, column=7, padx=PADX, pady=PADY)
+        self.bb_lbol_label.grid(row=4, column=6, padx=PADX, pady=PADY)
         self.bb_lbol = tk.DoubleVar()
         self.bb_spec_entry_3 = tk.Entry(self.root, width=10,
                                         textvariable=self.bb_lbol)
-        self.bb_spec_entry_3.grid(row=4, column=8, padx=PADX, pady=PADY)
+        self.bb_spec_entry_3.grid(row=4, column=7, padx=PADX, pady=PADY)
 
         self.user_spec_bool = tk.BooleanVar()
         self.user_spec_check = tk.Checkbutton(self.root,
-                                              text='Spectrum named',
+                                              text='Spectrum in spectra.py named',
                                               variable=self.user_spec_bool)
-        self.user_spec_check.grid(row=5, column=7, padx=PADX, pady=PADY)
-        user_spec_label = tk.Label(self.root,
-                                   text='(Spectrum must be in spectra.py)')
-        user_spec_label.grid(row=6, column=8, padx=PADX)
+        self.user_spec_check.grid(row=5, column=6, padx=PADX, pady=PADY)
         self.user_spec_name = tk.StringVar()
         self.user_spec_entry = tk.Entry(self.root, width=20,
                                         textvariable=self.user_spec_name)
-        self.user_spec_entry.grid(row=5, column=8, padx=PADX, pady=PADY)
+        self.user_spec_entry.grid(row=5, column=7, padx=PADX, pady=PADY)
 
         self.spec_results_labels = []
-        spec_results_label_names = ['Signal (e-)', 'Total Noise (e-)', 'Noise Breakdown', 'SNR',
-                                    'Photometric Precision (ppm)', 'Optimal Aperture Size (pix)']
+        spec_results_label_names = ['Signal (e-)', 'Total Noise (e-)', 'SNR',
+                                    'Photometric Precision (ppm)', 'Optimal Aperture Size (pix)',
+                                    'Noise Breakdown', 'Turnover Exposure Time (s)']
         self.spec_results_data = []
         for i, name in enumerate(spec_results_label_names):
             self.spec_results_labels.append(tk.Label(self.root, text=name))
-            self.spec_results_labels[i].grid(row=i+7, column=7, padx=PADX, pady=PADY)
+            
             self.spec_results_data.append(tk.Label(self.root, fg='red'))
-            self.spec_results_data[i].grid(row=i+7, column=8, padx=PADX, pady=PADY)
+            # Trying to figure out spacing
+            self.spec_results_labels[i].grid(row=i+6, column=6, padx=PADX, pady=PADY)
+            self.spec_results_data[i].grid(row=i+6, column=7, padx=PADX, pady=PADY)
 
         # Make a button to plot mag vs noise
-        self.plot_button = tk.Button(self.root, text='Plot Magnitude vs. Noise',
+        self.plot_button = tk.Button(self.root, text='Plot Magnitude vs. Photometric Precision',
                                     command=self.plot_mag_vs_noise, fg='green')
-        self.plot_button.grid(row=13, column=7, columnspan=2, padx=PADX,
+        self.plot_button.grid(row=9, column=4, columnspan=2, padx=PADX,
                               pady=PADY)
 
         self.root.mainloop()
@@ -394,17 +394,20 @@ class MyGUI:
             noise = int(results['tot_noise'])
             snr = results['signal'] / results['tot_noise']
             phot_prec = 10 ** 6 / snr
+            turnover_exp_time = observatory.turnover_exp_time(spectrum)
             self.spec_results_data[0].config(text=format(signal, '4d'))
             self.spec_results_data[1].config(text=format(noise, '4d'))
+            self.spec_results_data[2].config(text=format(snr, '4.3f'))
+            self.spec_results_data[3].config(text=format(phot_prec, '4.3f'))
+            self.spec_results_data[4].config(text=format(results['n_aper'], '2d'))
             noise_str = ('Shot noise: ' + format(results['shot_noise'], '.2f') +
                          '\nDark noise: ' + format(results['dark_noise'], '.2f') +
                          '\nRead noise: ' + format(results['read_noise'], '.2f') +
                          '\nBackground noise: ' + format(results['bkg_noise'], '.2f') +
                          '\nScintillation noise: ' + format(results['scint_noise'], '.2f'))
-            self.spec_results_data[2].config(text=noise_str)
-            self.spec_results_data[3].config(text=format(snr, '4.3f'))
-            self.spec_results_data[4].config(text=format(phot_prec, '4.3f'))
-            self.spec_results_data[5].config(text=format(results['n_aper'], '2d'))
+            self.spec_results_data[5].config(text=noise_str)
+            self.spec_results_data[6]. config(text=format(turnover_exp_time, '4.3f'))
+
         except ValueError as inst:
             messagebox.showerror('Value Error', inst)
 
@@ -459,6 +462,12 @@ class MyGUI:
         plt.ylabel('Photometric Precision (ppm)')
         plt.yscale('log')
         plt.legend()
+        # Make title text with telescope name, bandbpass, and exposure time
+        tele_name = self.tele_name.get()
+        bandpass = self.obs_vars[4].get()
+        exposure_time = self.obs_vars[0].get()
+        title = f'{tele_name}, {bandpass}, t_exp={exposure_time}s'
+        plt.title(title)
         plt.show()
 
 
